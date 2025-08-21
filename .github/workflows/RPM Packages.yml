@@ -1,4 +1,4 @@
-name: RPM Packages
+name: Extract RPM Dependencies
 
 on:
   workflow_dispatch:
@@ -10,17 +10,28 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Extract packages from .spec files
+      - name: Extract packages from libdnf.spec
         run: |
-          # Extract Requires and BuildRequires lines, get package names only
-          grep -hE '^(Requires|BuildRequires):' **/*.spec | \
+          SPEC_FILE="rpm_libdnf/libdnf.spec"
+
+          if [ ! -f "$SPEC_FILE" ]; then
+            echo "Spec file not found: $SPEC_FILE"
+            touch packages.txt
+            exit 1
+          fi
+
+          echo "Extracting Requires/BuildRequires from $SPEC_FILE..."
+
+          grep -hE '^(Requires|BuildRequires):' "$SPEC_FILE" | \
           sed -E 's/^(Requires|BuildRequires):\s*//g' | \
+          tr ',' '\n' | \
           tr ' ' '\n' | \
           sed -E 's/[><=]+.*$//g' | \
+          grep -v '^[%{]' | \
           grep -v '^$' | \
           sort -u > packages.txt
-          
-          echo "Extracted packages:"
+
+          echo "Extracted package names:"
           cat packages.txt
 
       - name: Upload packages.txt
