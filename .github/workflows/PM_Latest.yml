@@ -1,0 +1,29 @@
+name: Extract RPM Project Package Dependencies
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  list-packages:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract RPM dependencies from .spec files
+        run: |
+          echo "BuildRequires and Requires packages from spec files:" > packages.txt
+          for spec in $(find . -name "*.spec"); do
+            echo "Spec file: $spec" >> packages.txt
+            grep -E '^(BuildRequires|Requires):' "$spec" >> packages.txt || true
+            echo "" >> packages.txt
+          done
+
+      - name: Upload package list
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-project-packages
+          path: packages.txt
