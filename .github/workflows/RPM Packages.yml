@@ -1,0 +1,30 @@
+name: RPM Packages
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Extract packages from .spec files
+        run: |
+          # Extract Requires and BuildRequires lines, get package names only
+          grep -hE '^(Requires|BuildRequires):' **/*.spec | \
+          sed -E 's/^(Requires|BuildRequires):\s*//g' | \
+          tr ' ' '\n' | \
+          sed -E 's/[><=]+.*$//g' | \
+          grep -v '^$' | \
+          sort -u > packages.txt
+          
+          echo "Extracted packages:"
+          cat packages.txt
+
+      - name: Upload packages.txt
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-packages-list
+          path: packages.txt
