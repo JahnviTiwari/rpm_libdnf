@@ -1,0 +1,35 @@
+name: RPM Project Package_latest
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  list-packages:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Extract and clean RPM dependencies from .spec files
+      - name: Extract and clean RPM dependencies from .spec files
+        run: |
+          echo "Package Name" > packages_clean.txt
+          for spec in $(find . -name "*.spec"); do
+            grep -E '^(BuildRequires|Requires):' "$spec" | \
+            sed -E 's/^(BuildRequires|Requires):\s*//' | \
+            sed -E 's/%\{[^}]+\}//g' | \
+            sed -E 's/[><=]+[^ ]+//g' | \
+            tr ' ' '\n' | \
+            grep -E '^[a-zA-Z0-9_.-]+$'
+          done | sort -u >> packages_clean.txt
+
+      # 3. Upload the cleaned package list as artifact
+      - name: Upload package list
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-project-packages-clean
+          path: packages_clean.txt
