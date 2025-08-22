@@ -1,0 +1,44 @@
+name: packages_versions
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  list-packages:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install rpm-build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm build-essential
+
+      - name: Expand spec macros and extract dependencies
+        run: |
+          echo "# RPM Dependencies (with resolved versions)" > packages.txt
+          for spec in $(find . -name "*.spec"); do
+            echo "## Spec file: $spec" >> packages.txt
+            rpmspec -P "$spec" \
+              | grep -E '^(BuildRequires|Requires):' \
+              | sed -E 's/^(BuildRequires|Requires):[ \t]*//' \
+              >> packages.txt
+            echo "" >> packages.txt
+          done
+
+      - name: Create clean list of unique packages with versions
+        run: |
+          grep -E '^[^#]' packages.txt \
+            | awk '{print $1 " " $2}' \
+            | sort -u > clean-packages-with-versions.txt
+
+      - name: Upload RPM package lists
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-packages-with-versions
+          path: |
+            packages.txt
+            clean-packages-with-versions.txt
